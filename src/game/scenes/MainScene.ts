@@ -26,6 +26,10 @@ export class MainScene extends Phaser.Scene {
   private playerTrail?: Phaser.GameObjects.Particles.ParticleEmitter;
   private comboMultiplier: number = 1;
   private comboTimer: number = 0;
+  private touchLeft: boolean = false;
+  private touchRight: boolean = false;
+  private requestedJump: boolean = false;
+  private lastTap: number = 0;
   
   constructor() {
     super({ key: 'MainScene' });
@@ -213,14 +217,16 @@ export class MainScene extends Phaser.Scene {
   
   create() {
     this.createParallaxBackground();
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = this.scale.width <= 768;
     
     // Ambient particles
     const ambientParticles = this.add.particles(0, 0, 'particle', {
-      speed: { min: 20, max: 50 },
-      scale: { start: 0.3, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: 3000,
-      frequency: 300,
+      speed: { min: 20, max: 40 },
+      scale: { start: 0.25, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      lifespan: 2500,
+      frequency: (reduceMotion || isMobile) ? 800 : 300,
       emitting: true,
       blendMode: 'ADD',
       tint: [0x00FFFF, 0xFF69B4, 0xFFD700, 0x9D4EDD]
@@ -259,13 +265,13 @@ export class MainScene extends Phaser.Scene {
     // Player trail particles
     this.playerTrail = this.add.particles(0, 0, 'particle', {
       speed: 20,
-      scale: { start: 0.4, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: 300,
+      scale: { start: 0.35, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      lifespan: 280,
       blendMode: 'ADD',
       follow: this.player,
       tint: this.characterType === 'lumo' ? 0x00FFFF : this.characterType === 'pixy' ? 0xFFB347 : 0x90EE90,
-      frequency: 50
+      frequency: (reduceMotion || isMobile) ? 120 : 50
     });
     
     // Physics collisions
@@ -291,6 +297,41 @@ export class MainScene extends Phaser.Scene {
     
     // Show level start notification
     this.showLevelStart();
+
+    // Touch controls for mobile
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      const now = this.time.now;
+      if (now - this.lastTap < 300) {
+        // Double tap -> shoot
+        this.shootProjectile();
+      } else {
+        // Single tap -> jump when grounded
+        this.requestedJump = true;
+      }
+      this.lastTap = now;
+      if (pointer.x < this.scale.width / 2) {
+        this.touchLeft = true;
+        this.touchRight = false;
+      } else {
+        this.touchRight = true;
+        this.touchLeft = false;
+      }
+    });
+    this.input.on('pointerup', () => {
+      this.touchLeft = false;
+      this.touchRight = false;
+    });
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.isDown) {
+        if (pointer.x < this.scale.width / 2) {
+          this.touchLeft = true;
+          this.touchRight = false;
+        } else {
+          this.touchRight = true;
+          this.touchLeft = false;
+        }
+      }
+    });
   }
   
   showLevelStart() {
@@ -356,15 +397,21 @@ export class MainScene extends Phaser.Scene {
       const platform = this.platforms!.create(pos.x, pos.y, 'platform');
       platform.refreshBody();
       
-      // Add platform glow animation
-      this.tweens.add({
-        targets: platform,
-        alpha: { from: 0.8, to: 1 },
-        duration: 1000 + Math.random() * 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      // Add platform glow animation (reduced on mobile/reduced-motion)
+      const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobile = this.scale.width <= 768;
+      if (!(reduceMotion || isMobile)) {
+        this.tweens.add({
+          targets: platform,
+          alpha: { from: 0.85, to: 1 },
+          duration: 1200 + Math.random() * 800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      } else {
+        platform.setAlpha(0.95);
+      }
     });
   }
   
@@ -381,6 +428,9 @@ export class MainScene extends Phaser.Scene {
       coin.setBounceY(0.5);
       coin.setScale(1.2);
       
+      // Reduced motion on mobile/reduced-motion devices
+      const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobile = this.scale.width <= 768;
       this.tweens.add({
         targets: coin,
         y: y - 15,
@@ -389,23 +439,23 @@ export class MainScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut'
       });
-      
-      this.tweens.add({
-        targets: coin,
-        angle: 360,
-        duration: 2000,
-        repeat: -1,
-        ease: 'Linear'
-      });
-      
-      this.tweens.add({
-        targets: coin,
-        scale: { from: 1.2, to: 1.4 },
-        duration: 800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      if (!(reduceMotion || isMobile)) {
+        this.tweens.add({
+          targets: coin,
+          angle: 360,
+          duration: 2000,
+          repeat: -1,
+          ease: 'Linear'
+        });
+        this.tweens.add({
+          targets: coin,
+          scale: { from: 1.2, to: 1.4 },
+          duration: 800,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
     }
     
     this.totalCoins = coinCount;
@@ -813,11 +863,11 @@ export class MainScene extends Phaser.Scene {
     const speed = this.characterType === 'pixy' ? 220 : this.characterType === 'koza' ? 150 : 180;
     const acceleration = 600;
     
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.touchLeft) {
       this.player.setAccelerationX(-acceleration);
       this.player.setFlipX(true);
       this.playerIdleTimer = 0;
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.touchRight) {
       this.player.setAccelerationX(acceleration);
       this.player.setFlipX(false);
       this.playerIdleTimer = 0;
@@ -839,8 +889,9 @@ export class MainScene extends Phaser.Scene {
     
     // Jump with variable height
     const jumpPower = this.characterType === 'pixy' ? -400 : this.characterType === 'koza' ? -320 : -370;
-    if (this.cursors.up.isDown && this.player.body?.touching.down) {
+    if ((this.cursors.up.isDown || this.requestedJump) && this.player.body?.touching.down) {
       this.player.setVelocityY(jumpPower);
+      this.requestedJump = false;
       
       const jumpParticles = this.add.particles(this.player.x, this.player.y + 16, 'particle', {
         speed: { min: 50, max: 100 },

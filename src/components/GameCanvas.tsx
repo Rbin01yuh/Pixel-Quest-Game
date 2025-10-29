@@ -17,6 +17,10 @@ export const GameCanvas = () => {
       height: 600,
       parent: 'game-container',
       backgroundColor: '#240046',
+      render: {
+        pixelArt: true,
+        antialias: false,
+      },
       physics: {
         default: 'arcade',
         arcade: {
@@ -25,10 +29,14 @@ export const GameCanvas = () => {
         }
       },
       scene: gameMode === 'platformer' ? MainScene : EndlessScene,
-      pixelArt: true,
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
+      },
+      fps: {
+        min: 30,
+        target: 60,
+        forceSetTimeOut: true,
       }
     };
     
@@ -70,12 +78,7 @@ export const GameCanvas = () => {
     <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-b from-purple-900 to-indigo-900">
       <div 
         id="game-container" 
-        className="relative rounded-lg overflow-hidden shadow-2xl"
-        style={{
-          maxWidth: '800px',
-          maxHeight: '600px',
-          aspectRatio: '4/3'
-        }}
+        className="relative w-full max-w-[1000px] aspect-[4/3] rounded-lg overflow-hidden shadow-2xl"
       />
     </div>
   );

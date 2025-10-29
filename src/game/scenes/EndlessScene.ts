@@ -35,6 +35,10 @@ export class EndlessScene extends Phaser.Scene {
   private comboTimer: number = 0;
   private lastPlatformY: number = 500;
   private safeRespawn: boolean = false;
+  private touchLeft: boolean = false;
+  private touchRight: boolean = false;
+  private requestedJump: boolean = false;
+  private lastTap: number = 0;
   
   constructor() {
     super({ key: 'EndlessScene' });
@@ -175,14 +179,16 @@ export class EndlessScene extends Phaser.Scene {
   
   create() {
     this.createParallaxBackground();
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = this.scale.width <= 768;
     
     // Ambient particles
     const ambientParticles = this.add.particles(0, 0, 'particle', {
-      speed: { min: 30, max: 60 },
-      scale: { start: 0.4, end: 0 },
-      alpha: { start: 0.7, end: 0 },
-      lifespan: 3000,
-      frequency: 200,
+      speed: { min: 25, max: 50 },
+      scale: { start: 0.35, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      lifespan: 2500,
+      frequency: (reduceMotion || isMobile) ? 600 : 200,
       emitting: true,
       blendMode: 'ADD',
       tint: [0x00FFFF, 0xFF69B4, 0xFFD700, 0x9D4EDD]
@@ -221,14 +227,14 @@ export class EndlessScene extends Phaser.Scene {
     
     // Player trail
     this.playerTrail = this.add.particles(0, 0, 'particle', {
-      speed: 30,
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 0.7, end: 0 },
-      lifespan: 400,
+      speed: 25,
+      scale: { start: 0.45, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      lifespan: 360,
       blendMode: 'ADD',
       follow: this.player,
       tint: this.characterType === 'lumo' ? 0x00FFFF : this.characterType === 'pixy' ? 0xFFB347 : 0x90EE90,
-      frequency: 40
+      frequency: (reduceMotion || isMobile) ? 90 : 40
     });
     
     // Physics
@@ -243,6 +249,38 @@ export class EndlessScene extends Phaser.Scene {
     // Input
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    // Touch controls for mobile
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      const now = this.time.now;
+      if (now - this.lastTap < 300) {
+        this.shootProjectile();
+      } else {
+        this.requestedJump = true;
+      }
+      this.lastTap = now;
+      if (pointer.x < this.scale.width / 2) {
+        this.touchLeft = true;
+        this.touchRight = false;
+      } else {
+        this.touchRight = true;
+        this.touchLeft = false;
+      }
+    });
+    this.input.on('pointerup', () => {
+      this.touchLeft = false;
+      this.touchRight = false;
+    });
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.isDown) {
+        if (pointer.x < this.scale.width / 2) {
+          this.touchLeft = true;
+          this.touchRight = false;
+        } else {
+          this.touchRight = true;
+          this.touchLeft = false;
+        }
+      }
+    });
     
     // Camera
     this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, 600);
@@ -284,15 +322,21 @@ export class EndlessScene extends Phaser.Scene {
     platform.body.immovable = true;
     platform.body.allowGravity = false;
     platform.setVelocityX(-this.gameSpeed * 50);
-    
-    this.tweens.add({
-      targets: platform,
-      alpha: { from: 0.9, to: 1 },
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    // Reduce continuous tweening on mobile/reduced-motion
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = this.scale.width <= 768;
+    if (!(reduceMotion || isMobile)) {
+      this.tweens.add({
+        targets: platform,
+        alpha: { from: 0.9, to: 1 },
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    } else {
+      platform.setAlpha(0.95);
+    }
     
     this.lastPlatformY = y;
   }
@@ -303,23 +347,33 @@ export class EndlessScene extends Phaser.Scene {
     const coin = this.coins.create(x, y, 'coin');
     coin.setVelocityX(-this.gameSpeed * 50);
     coin.setScale(1.2);
-    
-    this.tweens.add({
-      targets: coin,
-      angle: 360,
-      duration: 2000,
-      repeat: -1
-    });
-    
+    // Reduced motion on mobile/reduced-motion devices
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = this.scale.width <= 768;
     this.tweens.add({
       targets: coin,
       y: y - 10,
-      scale: { from: 1.2, to: 1.4 },
-      duration: 800,
+      duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
     });
+    if (!(reduceMotion || isMobile)) {
+      this.tweens.add({
+        targets: coin,
+        angle: 360,
+        duration: 2000,
+        repeat: -1
+      });
+      this.tweens.add({
+        targets: coin,
+        scale: { from: 1.2, to: 1.35 },
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
   }
   
   createEnemy(x: number, y: number) {
@@ -696,10 +750,10 @@ export class EndlessScene extends Phaser.Scene {
     const speed = this.characterType === 'pixy' ? 240 : this.characterType === 'koza' ? 160 : 200;
     const acceleration = 700;
     
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.touchLeft) {
       this.player.setAccelerationX(-acceleration);
       this.player.setFlipX(true);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.touchRight) {
       this.player.setAccelerationX(acceleration);
       this.player.setFlipX(false);
     } else {
@@ -709,8 +763,9 @@ export class EndlessScene extends Phaser.Scene {
     
     // Jump
     const jumpPower = this.characterType === 'pixy' ? -420 : this.characterType === 'koza' ? -340 : -390;
-    if (this.cursors.up.isDown && this.player.body?.touching.down) {
+    if ((this.cursors.up.isDown || this.requestedJump) && this.player.body?.touching.down) {
       this.player.setVelocityY(jumpPower);
+      this.requestedJump = false;
       
       const jumpParticles = this.add.particles(this.player.x, this.player.y + 16, 'particle', {
         speed: { min: 50, max: 120 },

@@ -22,6 +22,11 @@ export const MainMenu = () => {
     startGame();
   };
   
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false;
+  const particleCount = reduceMotion || isMobile ? 10 : 20;
+  const shouldAnimate = !(reduceMotion);
+
   const characters = {
     lumo: { name: 'Lumo', emoji: '💫' },
     pixy: { name: 'Pixy', emoji: '🐦' },
@@ -30,9 +35,9 @@ export const MainMenu = () => {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900 flex items-center justify-center p-4 overflow-hidden relative">
-      {/* Animated background particles */}
+      {/* Animated background particles (reduced on mobile/reduced-motion) */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(particleCount)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-2 h-2 bg-white rounded-full"
@@ -41,15 +46,15 @@ export const MainMenu = () => {
               y: Math.random() * window.innerHeight,
               opacity: Math.random() * 0.5 + 0.2
             }}
-            animate={{
+            animate={shouldAnimate ? {
               y: [null, Math.random() * window.innerHeight],
               x: [null, Math.random() * window.innerWidth]
-            }}
-            transition={{
+            } : undefined}
+            transition={shouldAnimate ? {
               duration: Math.random() * 10 + 10,
               repeat: Infinity,
               repeatType: 'reverse'
-            }}
+            } : undefined}
           />
         ))}
       </div>
@@ -57,21 +62,21 @@ export const MainMenu = () => {
       <div className="relative z-10 max-w-2xl w-full">
         {/* Title */}
         <motion.div
-          initial={{ y: -50, opacity: 0 }}
+          initial={{ y: -30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, type: 'spring' }}
+          transition={{ duration: 0.6, type: 'spring' }}
           className="text-center mb-12"
         >
           <motion.div
-            animate={{
-              scale: [1, 1.05, 1],
-              rotate: [0, 2, -2, 0]
-            }}
-            transition={{
+            animate={shouldAnimate ? {
+              scale: [1, 1.03, 1],
+              rotate: [0, 1.5, -1.5, 0]
+            } : undefined}
+            transition={shouldAnimate ? {
               duration: 4,
               repeat: Infinity,
               ease: 'easeInOut'
-            }}
+            } : undefined}
             className="mb-4"
           >
             <h1 className="text-6xl md:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 mb-2 drop-shadow-lg">
@@ -116,15 +121,15 @@ export const MainMenu = () => {
             initial={{ x: -50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={shouldAnimate ? { scale: 1.04, y: -3 } : {}}
+            whileTap={{ scale: 0.97 }}
             onClick={handleStartPlatformer}
             className="bg-gradient-to-br from-cyan-500 to-blue-500 p-8 rounded-2xl shadow-lg hover:shadow-cyan-500/50 transition-all group"
           >
             <div className="flex flex-col items-center gap-3">
               <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                animate={shouldAnimate ? { y: [0, -8, 0] } : undefined}
+                transition={shouldAnimate ? { duration: 2, repeat: Infinity } : undefined}
                 className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center"
               >
                 <Play className="w-8 h-8 text-white" />
@@ -140,15 +145,15 @@ export const MainMenu = () => {
             initial={{ x: 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={shouldAnimate ? { scale: 1.04, y: -3 } : {}}
+            whileTap={{ scale: 0.97 }}
             onClick={handleStartEndless}
             className="bg-gradient-to-br from-pink-500 to-purple-500 p-8 rounded-2xl shadow-lg hover:shadow-pink-500/50 transition-all group"
           >
             <div className="flex flex-col items-center gap-3">
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                animate={shouldAnimate ? { rotate: 360 } : undefined}
+                transition={shouldAnimate ? { duration: 4, repeat: Infinity, ease: 'linear' } : undefined}
                 className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center"
               >
                 <Infinity className="w-8 h-8 text-white" />
@@ -167,8 +172,8 @@ export const MainMenu = () => {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.6 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={shouldAnimate ? { scale: 1.04 } : {}}
+            whileTap={{ scale: 0.97 }}
             onClick={toggleCharacterSelector}
             className="bg-purple-800/50 backdrop-blur-sm p-6 rounded-xl border border-purple-500/30 hover:bg-purple-800/70 transition-all group"
           >
@@ -185,8 +190,8 @@ export const MainMenu = () => {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.7 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={shouldAnimate ? { scale: 1.04 } : {}}
+            whileTap={{ scale: 0.97 }}
             onClick={toggleSettings}
             className="bg-purple-800/50 backdrop-blur-sm p-6 rounded-xl border border-purple-500/30 hover:bg-purple-800/70 transition-all group"
           >
@@ -224,6 +229,9 @@ export const MainMenu = () => {
               <div className="text-purple-300">Pause</div>
             </div>
           </div>
+          <p className="text-center text-purple-300 text-[11px] mt-3">
+            Mobile: tap kiri/kanan untuk bergerak, sekali tap untuk lompat, dua kali tap untuk menembak.
+          </p>
         </motion.div>
       </div>
     </div>
